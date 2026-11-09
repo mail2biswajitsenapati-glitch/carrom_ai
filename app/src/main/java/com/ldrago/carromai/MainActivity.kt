@@ -16,56 +16,59 @@ import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var accStatusTv: TextView
-    private lateinit var overlayStatusTv: TextView
-    private lateinit var accBtn: Button
+    private lateinit var statusTv: TextView
     private lateinit var overlayBtn: Button
-    private lateinit var launchBtn: Button
+    private lateinit var accBtn: Button
+    private lateinit var startGameBtn: Button
+
+    private val carromPackages = listOf(
+        "com.miniclip.carrom",
+        "com.miniclip.carrompool"
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#090D16"))
-            setPadding(55, 90, 55, 55)
+            setBackgroundColor(Color.parseColor("#12151C"))
+            setPadding(50, 80, 50, 50)
             gravity = Gravity.CENTER_HORIZONTAL
         }
 
-        val title = TextView(this).apply {
-            text = "🐉 L-DRAGO AIM & AUTOPLAY"
-            textSize = 22f
-            setTextColor(Color.parseColor("#00F5D4"))
+        val header = TextView(this).apply {
+            text = "🎯 CARROM KING HELPER"
+            textSize = 21f
+            setTextColor(Color.WHITE)
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
-            setPadding(0, 0, 0, 12)
         }
 
-        val subTitle = TextView(this).apply {
-            text = "RAM Frame Cache • Laser Rebound Lines • Auto Bot"
+        val subHeader = TextView(this).apply {
+            text = "Live Box2D Trajectory • Stream-Proof • Auto Mode"
             textSize = 12f
-            setTextColor(Color.parseColor("#94A3B8"))
+            setTextColor(Color.parseColor("#8A94A6"))
             gravity = Gravity.CENTER
-            setPadding(0, 0, 0, 65)
+            setPadding(0, 10, 0, 50)
         }
 
-        accStatusTv = TextView(this).apply {
-            textSize = 15f
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding(0, 15, 0, 15)
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(40, 40, 40, 40)
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#1C212C"))
+                cornerRadius = 28f
+                setStroke(2, Color.parseColor("#2D3546"))
+            }
         }
 
-        accBtn = createButton("1. Open Accessibility Settings", "#1E293B") {
-            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        statusTv = TextView(this).apply {
+            textSize = 14f
+            setTextColor(Color.WHITE)
+            setPadding(0, 0, 0, 30)
         }
 
-        overlayStatusTv = TextView(this).apply {
-            textSize = 15f
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding(0, 35, 0, 15)
-        }
-
-        overlayBtn = createButton("2. Allow Floating Overlay Permission", "#1E293B") {
+        overlayBtn = makeBtn("1. Display Over Other Apps Permission", "#2B3343") {
             val intent = Intent(
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 Uri.parse("package:$packageName")
@@ -73,78 +76,70 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
-        launchBtn = createButton("🚀 START FLOATING LASER MENU", "#00B4D8") {
+        accBtn = makeBtn("2. Enable Live Board Reader & Auto-Touch", "#2B3343") {
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }
+
+        startGameBtn = makeBtn("🎮 LAUNCH CARROM POOL", "#00C853") {
             if (!Settings.canDrawOverlays(this)) {
-                Toast.makeText(this, "Pehle Step 2 (Floating Overlay) ON karein!", Toast.LENGTH_SHORT).show()
-                return@createButton
+                Toast.makeText(this, "Pehle Step 1 (Overlay Permission) allow karein!", Toast.LENGTH_SHORT).show()
+                return@makeBtn
             }
-            if (!isAccessibilityEnabled()) {
-                Toast.makeText(this, "Pehle Step 1 (Accessibility) me L-Drago ON karein!", Toast.LENGTH_SHORT).show()
-                return@createButton
+            if (!isServiceReady()) {
+                Toast.makeText(this, "Pehle Step 2 (Accessibility) me app ON karein!", Toast.LENGTH_SHORT).show()
+                return@makeBtn
             }
 
             val service = HumanTouchAccessibilityService.instance
             if (service != null) {
                 service.showFloatingController()
-                Toast.makeText(this, "🐉 Floating Icon & Laser Lines Active! Carrom kholein.", Toast.LENGTH_LONG).show()
-                moveTaskToBack(true)
+                launchCarromPoolApp()
             } else {
-                Toast.makeText(this, "Accessibility me L-Drago ko ek baar OFF karke wapas ON karein!", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Accessibility service ko ek baar OFF karke ON karein", Toast.LENGTH_LONG).show()
                 startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             }
         }
 
-        val lp = LinearLayout.LayoutParams(
+        card.addView(statusTv)
+        card.addView(overlayBtn)
+        card.addView(accBtn)
+
+        root.addView(header)
+        root.addView(subHeader)
+        root.addView(card, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { setMargins(0, 12, 0, 12) }
+        ))
 
-        root.addView(title)
-        root.addView(subTitle)
-        root.addView(accStatusTv)
-        root.addView(accBtn, lp)
-        root.addView(overlayStatusTv)
-        root.addView(overlayBtn, lp)
-
-        val launchLp = LinearLayout.LayoutParams(
+        val launchParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { setMargins(0, 75, 0, 0) }
-        root.addView(launchBtn, launchLp)
+        ).apply { setMargins(0, 50, 0, 0) }
+        root.addView(startGameBtn, launchParams)
 
         setContentView(root)
     }
 
     override fun onResume() {
         super.onResume()
-        refreshStatus()
+        updateUI()
     }
 
-    private fun refreshStatus() {
-        val accOk = isAccessibilityEnabled()
-        if (accOk) {
-            accStatusTv.text = "✅ Step 1: Accessibility ENABLED"
-            accStatusTv.setTextColor(Color.parseColor("#00F554"))
-            accBtn.text = "Accessibility Active ✓"
-        } else {
-            accStatusTv.text = "❌ Step 1: Accessibility NOT Enabled"
-            accStatusTv.setTextColor(Color.parseColor("#FF2A85"))
-            accBtn.text = "1. Open Accessibility Settings"
-        }
+    private fun updateUI() {
+        val ovOk = Settings.canDrawOverlays(this)
+        val accOk = isServiceReady()
 
-        val overlayOk = Settings.canDrawOverlays(this)
-        if (overlayOk) {
-            overlayStatusTv.text = "✅ Step 2: Floating Overlay ENABLED"
-            overlayStatusTv.setTextColor(Color.parseColor("#00F554"))
-            overlayBtn.text = "Floating Overlay Active ✓"
+        overlayBtn.text = if (ovOk) "✅ 1. Overlay Permission: Ready" else "1. Allow Overlay Permission"
+        accBtn.text = if (accOk) "✅ 2. Live Board Service: Ready" else "2. Enable Live Board Service"
+
+        statusTv.text = if (ovOk && accOk) {
+            "🟢 System Ready! Niche button daba kar Carrom Pool start karein."
         } else {
-            overlayStatusTv.text = "❌ Step 2: Floating Overlay NOT Enabled"
-            overlayStatusTv.setTextColor(Color.parseColor("#FF2A85"))
-            overlayBtn.text = "2. Allow Floating Overlay Permission"
+            "🟡 Setup Required: Dono permissions ON karein."
         }
     }
 
-    private fun isAccessibilityEnabled(): Boolean {
+    private fun isServiceReady(): Boolean {
         if (HumanTouchAccessibilityService.instance != null) return true
         val enabled = Settings.Secure.getString(
             contentResolver,
@@ -153,18 +148,35 @@ class MainActivity : AppCompatActivity() {
         return enabled.contains(packageName, ignoreCase = true)
     }
 
-    private fun createButton(txt: String, hex: String, onClick: () -> Unit): Button {
+    private fun launchCarromPoolApp() {
+        for (pkg in carromPackages) {
+            val launchIntent = packageManager.getLaunchIntentForPackage(pkg)
+            if (launchIntent != null) {
+                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(launchIntent)
+                return
+            }
+        }
+        Toast.makeText(this, "🎯 Floating Aim Active! Ab Carrom Pool open karein.", Toast.LENGTH_SHORT).show()
+        moveTaskToBack(true)
+    }
+
+    private fun makeBtn(label: String, colorHex: String, onClick: () -> Unit): Button {
         return Button(this).apply {
-            text = txt
+            text = label
             isAllCaps = false
-            textSize = 15f
+            textSize = 14f
             setTextColor(Color.WHITE)
             typeface = Typeface.DEFAULT_BOLD
-            setPadding(30, 36, 30, 36)
+            setPadding(28, 32, 28, 32)
             background = GradientDrawable().apply {
-                setColor(Color.parseColor(hex))
-                cornerRadius = 24f
+                setColor(Color.parseColor(colorHex))
+                cornerRadius = 20f
             }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { setMargins(0, 12, 0, 12) }
             setOnClickListener { onClick() }
         }
     }
