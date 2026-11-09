@@ -23,13 +23,61 @@ jobs:
       with:
         gradle-version: '8.5'
 
-    - name: Fix Manifest Typo and Create Gradle Files
+    - name: Fix Missing Files and Setup Gradle
       run: |
-        # Teri spelling mistake (AndroidMainfest -> AndroidManifest) theek karne ke liye:
-        if [ -f "app/src/main/AndroidMainfest.xml" ]; then
-          mv app/src/main/AndroidMainfest.xml app/src/main/AndroidManifest.xml
-        fi
+        # 1. Galat naam wali Manifest file hatana
+        rm -f app/src/main/AndroidMainfest.xml
 
+        # 2. Sahi AndroidManifest.xml banana (bina missing icon error ke)
+        cat << 'EOF' > app/src/main/AndroidManifest.xml
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+            <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+
+            <application
+                android:allowBackup="true"
+                android:icon="@android:drawable/sym_def_app_icon"
+                android:label="L-Drago Carrom Bot"
+                android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+                
+                <activity android:name=".MainActivity" android:exported="true">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+
+                <service
+                    android:name=".HumanTouchAccessibilityService"
+                    android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+                    android:exported="true">
+                    <intent-filter>
+                        <action android:name="android.accessibilityservice.AccessibilityService" />
+                    </intent-filter>
+                    <meta-data
+                        android:name="android.accessibilityservice"
+                        android:resource="@xml/accessibility_service_config" />
+                </service>
+            </application>
+        </manifest>
+        EOF
+
+        # 3. Missing accessibility_service_config.xml banana
+        mkdir -p app/src/main/res/xml
+        cat << 'EOF' > app/src/main/res/xml/accessibility_service_config.xml
+        <?xml version="1.0" encoding="utf-8"?>
+        <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+            android:accessibilityEventTypes="typeAllMask"
+            android:accessibilityFeedbackType="feedbackGeneric"
+            android:accessibilityFlags="flagDefault"
+            android:canPerformGestures="true"
+            android:canRetrieveWindowContent="true"
+            android:notificationTimeout="100" />
+        EOF
+
+        # 4. Gradle configuration files banana
         echo "android.useAndroidX=true" > gradle.properties
         echo "org.gradle.jvmargs=-Xmx2048m" >> gradle.properties
 
